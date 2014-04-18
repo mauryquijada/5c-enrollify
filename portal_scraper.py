@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import json
 import os.path
 from app import send_message
+import time
 
 # Set up globals.
 BASEURL = "https://portal.claremontmckenna.edu/ics/Portlets/CRM/CXWebLinks/Port\
@@ -189,7 +190,7 @@ def update_course_info():
 			if new_delta not in deltas:
 				deltas.append(new_delta)
 
-		print new_deltas
+	print "Found %s deltas." % str(len(deltas))
 
 	g = open("depts_courses.json", "w")
 	g.write(json.dumps(new_depts_info, indent=4, sort_keys=True))
@@ -212,9 +213,12 @@ def send_updates():
 		c.execute("SELECT mobile_number, keycode FROM records WHERE confirmed = 1 AND course_id = ?", (delta["course"],))
 		numbers = c.fetchall()
 		for number in numbers:
+			print "Sending message to {0}.".format(str(int(number[0])))
 			send_message(str(int(number[0])), "As of now, {0} / {1} seats are now taken in {4} (previously {2} / {3}).\
 			Text \"STOP {5}\" to stop receiving updates.".format(delta["new_enrolled"], delta["new_max"],\
 			delta["old_enrolled"], delta["old_max"], delta["course"], str(int(number[1]))))
+			time.sleep(2)
+
 
 	return True
 

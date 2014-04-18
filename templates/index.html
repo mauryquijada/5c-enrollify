@@ -26,7 +26,7 @@
 				<div class="col-lg-6 col-lg-offset-3 text-center">
 				<h1 class="text-center">5C Enrollify</h1>
 
-				<p>Worried about getting a class, but don't want to keep checking Portal if it's filled up? Use this nifty tool that polls Portal every five minutes and texts you if the enrollment numbers for a class have changed. Don't worry--you
+				<p>Worried about getting a class, but don't want to keep checking Portal if it's filled up? Use this nifty tool that polls Portal every fifteen minutes and texts you if the enrollment numbers for a class have changed. Don't worry--you
 				can unsubscribe via text at any time, and I promise to keep your phone number private.</p>
 
 				<form id="form" action="#" method="post">
@@ -84,7 +84,6 @@
 				prefetch: {
 				    url: '/enrollify/getCourses',
 				    cacheKey: 'classes',
-				    ttl: 5000,
 				    filter: function(list) {
 				    	return $.map(list, function(classVal) {
 				    		return { name: classVal }; });
@@ -107,6 +106,11 @@
 				var input = $("input[name='class']");
 				var inputVal = input.val();
 				var classObjects = classes.storage.get("data").datums;
+
+				if ($.isEmptyObject(classObjects)) {
+					return false;
+				}
+
 				for (var i = 0; i < classObjects.length; i++) {
 					if (classObjects[i].name == inputVal) {
 						input.removeClass("has-error");
@@ -120,21 +124,13 @@
 			}
 
 			// Do live key-checking.
-			var timer = 0;
-			$("input[name='class']").bind('input change keyup', function(e){
-			    if (timer) {
-			        clearTimeout(timer);
-			    }
-			    timer = setTimeout(isClassInputValid, 200); 
+			$("input[name='class']").bind('click input change keyup', function(e){
+			    isClassInputValid();
 			});
 
-			$(".tt-dropdown-menu").on('click', function(e){
-			    if (timer) {
-			        clearTimeout(timer);
-			    }
-			    timer = setTimeout(isClassInputValid, 200); 
+			$(".tt-dropdown-menu").bind('click', function(e){
+			    isClassInputValid();
 			});
-
 
 			// Handle form submissions.
 			Ladda.bind( 'button[type=submit]' );

@@ -143,7 +143,8 @@ def get_current_courses():
 	for dept in depts_info:
 		for course in dept["courses"]:
 			title = course["course"] + " " + course["campus"] + "-" + course["section"] + ": " + course["title"]
-			course_strings.append(title)
+			if title not in course_strings:
+				course_strings.append(title)
 
 	f.close()
 
