@@ -8,6 +8,8 @@ import os.path
 from app import send_message
 import time
 
+# NOTE: This is an adaptation of github.com/sean-adler/course-api.
+
 # Set up globals.
 BASEURL = "https://portal.claremontmckenna.edu/ics/Portlets/CRM/CXWebLinks/Port\
 let.CXFacultyAdvisor/CXFacultyAdvisorPage.aspx?SessionID={25715df1-32b9-42bf-90\
@@ -83,7 +85,7 @@ def create_course_dict(td_tags):
 		course["enrolled"] = match.group(1)
 		course["max"] = match.group(2)
 
-		# Skip PE079 for now.
+		# Skip PE079 for now (course code format gives the regex a problem).
 		if course["course"] is "PE079":
 			return False
 		else:
@@ -102,7 +104,7 @@ def create_course_dict(td_tags):
 		return False
 
 def construct_depts():
-	# Only construct if we don"t have it.
+	# Only construct if we don't have it.
 	if os.path.isfile("depts.json"):
 		print "Skipping constructing depts.json; we already have it."
 		return False
@@ -124,7 +126,7 @@ def construct_depts():
 	return True
 
 def construct_course_info():
-	# Only construct if we don"t have it.
+	# Only construct if we don't have it.
 	if os.path.isfile("depts_courses.json"):
 		print "Skipping constructing depts_courses.json; we already have it."
 		return False
@@ -199,6 +201,7 @@ def update_course_info():
 
 	return deltas
 
+# This is the function that updates the enrollment numbers and sends out messages.
 def send_updates():
 	# Update the course information and obtain the deltas.
 	deltas = update_course_info()

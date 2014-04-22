@@ -23,8 +23,10 @@ ACCOUNT_SID = app.config["ACCOUNT_SID"]
 AUTH_TOKEN = app.config["AUTH_TOKEN"]
 ADMINISTRATORS = app.config["ADMINISTRATORS"]
 
+# Quick fix to e-mail administrator if we've encountered any error.
 mail_on_500(app, ADMINISTRATORS)
 
+# Helper function to create a empty database with the correct schema.
 def create_database():
 	conn = sqlite3.connect("records.db")
 	c = conn.cursor()
@@ -37,6 +39,7 @@ def hello():
 	# Simply display the homepage.
 	return render_template('index.html')
 
+# A hook that Twilio accesses when 5C Enrollify received a text message.
 @app.route("/receiveMessage", methods=['GET', 'POST'])
 def handle_message():
 	# Get the text message information.
@@ -47,6 +50,7 @@ def handle_message():
 	conn = sqlite3.connect("records.db")
 	c = conn.cursor()
 
+	# Route the request based on the beginning characters.
 	if message[0:3] == "YES":
 		# Grab the keycode.
 		try:
@@ -145,6 +149,7 @@ def add_record_to_database():
 	response.status_code = 201
 	return response
 
+# A page that the root page accesses to get all courses in our database.
 @app.route("/getCourses")
 def get_current_courses():
 	# Open the course information file.
@@ -163,7 +168,7 @@ def get_current_courses():
 
 	return json.dumps(course_strings)
 
-# Sends the message to a receiver using the Nexmo API.
+# Sends the message to a receiver using the Twilio API.
 def send_message(receiver, text):
 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
 
