@@ -191,6 +191,7 @@ def update_course_info():
 				deltas.append(new_delta)
 
 	print "Found %s deltas." % str(len(deltas))
+	print deltas
 
 	g = open("depts_courses.json", "w")
 	g.write(json.dumps(new_depts_info, indent=4, sort_keys=True))
@@ -214,8 +215,8 @@ def send_updates():
 		numbers = c.fetchall()
 		for number in numbers:
 			print "Sending message to {0}.".format(str(int(number[0])))
-			send_message(str(int(number[0])), "As of now, {0} / {1} seats are now taken in {4} (previously {2} / {3}).\
-			Text \"STOP {5}\" to stop receiving updates.".format(delta["new_enrolled"], delta["new_max"],\
+			send_message(number[0], "As of now, {0} / {1} seats are now taken in {4} (previously {2} / {3}). Reply with \"NO {5}\" to stop receiving updates.".\
+				format(delta["new_enrolled"], delta["new_max"],\
 			delta["old_enrolled"], delta["old_max"], delta["course"], str(int(number[1]))))
 			time.sleep(2)
 

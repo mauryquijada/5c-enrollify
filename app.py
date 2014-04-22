@@ -6,6 +6,8 @@ import sqlite3
 import re
 from flask_errormail import mail_on_500
 from random import randint
+from twilio.rest import TwilioRestClient
+import twilio.twiml
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -17,18 +19,16 @@ app.config.from_pyfile('app.cfg', silent=True)
 FROM_EMAIL = app.config["FROM_EMAIL"]
 TO_EMAIL = app.config["TO_EMAIL"]
 SENDING_PHONE_NUMBER = app.config["SENDING_PHONE_NUMBER"]
-API_KEY = app.config["API_KEY"]
-API_SECRET = app.config["API_SECRET"]
+ACCOUNT_SID = app.config["ACCOUNT_SID"]
+AUTH_TOKEN = app.config["AUTH_TOKEN"]
 ADMINISTRATORS = app.config["ADMINISTRATORS"]
-BASE_URL = "https://rest.nexmo.com/sms/json?api_key={0}\
-&api_secret={1}&type={2}&from={3}&to={4}&text={5}"
 
 mail_on_500(app, ADMINISTRATORS)
 
 def create_database():
 	conn = sqlite3.connect("records.db")
 	c = conn.cursor()
-	c.execute("CREATE TABLE records (added real, mobile_number real, course_id text, confirmed integer, keycode integer)")
+	c.execute("CREATE TABLE records (added real, mobile_number text, course_id text, confirmed integer, keycode integer)")
 	conn.commit()
 	conn.close()
 
@@ -40,8 +40,8 @@ def hello():
 @app.route("/receiveMessage", methods=['GET', 'POST'])
 def handle_message():
 	# Get the text message information.
-	message = request.form["text"]
-	phone = request.form["msisdn"]
+	phone = request.values.get("From")
+	message = request.values.get("Body")
 
 	# Prepare the database.
 	conn = sqlite3.connect("records.db")
@@ -49,8 +49,12 @@ def handle_message():
 
 	if message[0:3] == "YES":
 		# Grab the keycode.
-		match = re.search("^YES (.*)$", message)
-		keycode = match.group(1)
+		try:
+			match = re.search("^YES (.*)$", message)
+			keycode = match.group(1)
+		except Exception as exception:
+			log_error(exception)
+			msg_response = msg_response = "Sorry, but 5C Enrollify doesn't understand your input."
 
 		# Set them to "confirmed"
 		c.execute("UPDATE records SET confirmed = 1, added = ? WHERE mobile_number = ? AND keycode = ? AND confirmed = 0", \
@@ -68,10 +72,14 @@ def handle_message():
 
 			msg_response = "Great! You'll now receive updates about {0}.".format(course_id)
 
-	elif message[0:4] == "STOP":
+	elif message[0:2] == "NO":
 		# Grab the keycode.
-		match = re.search("^STOP (.*)$", message)
-		keycode = match.group(1)
+		try:
+			match = re.search("^NO (.*)$", message)
+			keycode = match.group(1)
+		except Exception as exception:
+			log_error(exception)
+			msg_response = msg_response = "Sorry, but 5C Enrollify doesn't understand your input."
 
 		# Delete them!
 		c.execute("DELETE FROM records WHERE confirmed = 1 AND mobile_number = ? AND keycode = ?", \
@@ -88,13 +96,14 @@ def handle_message():
 		msg_response = "Sorry, but 5C Enrollify doesn't understand your input."
 
 	# Send the response.
-	send_message(phone, msg_response)
+	resp = twilio.twiml.Response()
+	resp.message(msg_response)
 
 	# Close the database connection.
 	conn.commit()
 	conn.close()
 
-	return "success", 200
+	return str(resp)
 
 @app.route("/addRecord", methods=['POST'])
 def add_record_to_database():
@@ -102,9 +111,13 @@ def add_record_to_database():
 	response = make_response()
 
 	# Grab the input from the asynchronous request.
-	match = re.search("^([A-Z]+[0-9]+\s[A-Z]{2}-[0-9]{2}):.*$", str(request.form["course_id"]))
-	course_id = match.group(1)
-	phone = str("1" + request.form["phone"])
+	try:
+		match = re.search("^([A-Z]+[0-9]+[A-Z]*\s[A-Z]{2}-[0-9]{2}):.*$", str(request.form["course_id"]))
+		course_id = match.group(1)
+		phone = str("+1" + request.form["phone"])
+	except Exception as exception:
+		response.status_code = 500
+		return response
 
 	# Create a keycode that'll be used to add/ remove the course listing.
 	keycode = randint(10000, 99999)
@@ -152,19 +165,18 @@ def get_current_courses():
 
 # Sends the message to a receiver using the Nexmo API.
 def send_message(receiver, text):
-	type = "text"
+	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
 
-	request = BASE_URL.format(API_KEY, API_SECRET, type, SENDING_PHONE_NUMBER, receiver, text)
-	response = requests.get(request)
-	data = json.loads(response.text)
-
-	# If sending fails, send a message to the administrator.
-	if data["messages"][0]["status"] != "0":
-		body = "Received an error while trying to send a message: {0}".format(response.text)
-		log_error(body)
+	try:
+		message = client.messages.create(body=text,\
+		    to=receiver,\
+		    from_=SENDING_PHONE_NUMBER)
+	except twilio.TwilioRestException as e:
+		body = "Received an error while trying to send a message: {0}".format(e)
 		return False
-	else:
-		return True
+
+
+	return True
 
 # Sends a message to the e-mail defined above.
 def log_error(body):
