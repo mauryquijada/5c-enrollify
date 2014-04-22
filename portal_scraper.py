@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 import json
 import os.path
 from app import send_message
-import time
 
 # NOTE: This is an adaptation of github.com/sean-adler/course-api.
 
@@ -221,7 +220,6 @@ def send_updates():
 			send_message(number[0], "As of now, {0} / {1} seats are now taken in {4} (previously {2} / {3}). Reply with \"NO {5}\" to stop receiving updates.".\
 				format(delta["new_enrolled"], delta["new_max"],\
 			delta["old_enrolled"], delta["old_max"], delta["course"], str(int(number[1]))))
-			time.sleep(2)
 
 
 	return True
